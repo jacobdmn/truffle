@@ -16,16 +16,18 @@ import {
   CalldataDecoding,
   LogDecoding,
   ReturndataDecoding,
+  BlockSpecifier,
+  RegularizedBlockSpecifier,
   decodeCalldata,
   decodeEvent,
   decodeReturndata
 } from "@truffle/codec";
-import * as Utils from "./utils";
+import * as Encoder from "@truffle/encoder";
+import { ProviderAdapter, Provider } from "@truffle/encoder";
 import type * as DecoderTypes from "./types";
 import Web3Utils from "web3-utils";
 import type { ContractObject as Artifact } from "@truffle/contract-schema/spec";
 import BN from "bn.js";
-import type { Provider } from "web3/providers";
 import {
   ContractBeingDecodedHasNoNodeError,
   ContractAllocationFailedError,
@@ -33,10 +35,10 @@ import {
   InvalidAddressError,
   VariableNotFoundError,
   MemberNotFoundError,
+  ArrayIndexOutOfBoundsError,
   NoProviderError
 } from "./errors";
 import { Shims } from "@truffle/compile-common";
-import { ProviderAdapter } from "./ProviderAdapter";
 //sorry for the untyped import, but...
 const SourceMapUtils = require("@truffle/source-map-utils");
 
@@ -129,7 +131,7 @@ export class ProjectDecoder {
    */
   public async getCode(
     address: string,
-    block: DecoderTypes.RegularizedBlockSpecifier
+    block: RegularizedBlockSpecifier
   ): Promise<Uint8Array> {
     //if pending, ignore the cache
     if (block === "pending") {
@@ -154,8 +156,8 @@ export class ProjectDecoder {
    * @protected
    */
   public async regularizeBlock(
-    block: DecoderTypes.BlockSpecifier | null
-  ): Promise<DecoderTypes.RegularizedBlockSpecifier> {
+    block: BlockSpecifier | null
+  ): Promise<RegularizedBlockSpecifier> {
     if (typeof block === "number" || block === "pending") {
       return block;
     }
@@ -419,7 +421,7 @@ export class ProjectDecoder {
   //attempt to determine it from that
   private async getContextByAddress(
     address: string,
-    block: DecoderTypes.RegularizedBlockSpecifier,
+    block: RegularizedBlockSpecifier,
     constructorBinary?: string,
     additionalContexts: Contexts.Contexts = {}
   ): Promise<Contexts.Context | null> {
@@ -450,57 +452,19 @@ export class ProjectDecoder {
    */
 
   public async forArtifact(artifact: Artifact): Promise<ContractDecoder> {
-    const deployedBytecode = Shims.NewToLegacy.forBytecode(
-      artifact.deployedBytecode
+    let {
+      compilation,
+      contract
+    } = Compilations.Utils.findCompilationAndContract(
+      this.compilations,
+      artifact
     );
-    const bytecode = Shims.NewToLegacy.forBytecode(artifact.bytecode);
-
-    const { compilation, contract } = this.compilations.reduce(
-      (foundSoFar: DecoderTypes.CompilationAndContract, compilation) => {
-        if (foundSoFar) {
-          return foundSoFar;
-        }
-        const contractFound = compilation.contracts.find(contract => {
-          if (bytecode) {
-            return (
-              Shims.NewToLegacy.forBytecode(contract.bytecode) === bytecode &&
-              contract.contractName ===
-                (artifact.contractName || <string>artifact.contract_name)
-            );
-          } else if (deployedBytecode) {
-            //I'll just go by one of bytecode or deployedBytecode;
-            //no real need to check both
-            return (
-              Shims.NewToLegacy.forBytecode(contract.deployedBytecode) ===
-                deployedBytecode &&
-              contract.contractName ===
-                (artifact.contractName || <string>artifact.contract_name)
-            );
-          } else {
-            //WARNING: better hope we don't end up here!
-            return (
-              contract.contractName ===
-              (artifact.contractName || <string>artifact.contract_name)
-            );
-          }
-        });
-        if (contractFound) {
-          return { compilation, contract: contractFound };
-        } else {
-          return undefined;
-        }
-      },
-      undefined
-    );
-
-    if (contract === undefined) {
-      throw new ContractNotFoundError(
-        artifact.contractName,
-        bytecode,
-        deployedBytecode,
-        undefined
-      );
-    }
+    //to be *sure* we've got the right ABI, we trust the input over what was
+    //found
+    contract = {
+      ...contract,
+      abi: artifact.abi
+    };
 
     let contractDecoder = new ContractDecoder(
       contract,
@@ -550,7 +514,7 @@ export class ProjectDecoder {
    */
   public async forAddress(
     address: string,
-    block: DecoderTypes.BlockSpecifier = "latest"
+    block: BlockSpecifier = "latest"
   ): Promise<ContractInstanceDecoder> {
     if (!Web3Utils.isAddress(address)) {
       throw new InvalidAddressError(address);
@@ -644,7 +608,7 @@ export class ContractDecoder {
   private contract: Compilations.Contract;
   private artifact: Artifact;
   private contractNode: Ast.AstNode;
-  private contractNetwork: string;
+  private contractNetwork: number;
   private contextHash: string;
 
   private allocations: Codec.Evm.AllocationInfo;
@@ -697,7 +661,7 @@ export class ContractDecoder {
       //we now throw away the unnormalized context, instead fetching the correct one from
       //this.contexts (which is normalized) via the context getter below
     } else {
-      //if there's no bytecode, allocate output data in ABI mode anyway
+      //if there's no bytecode, allocate output data manually
       const referenceDeclarations = this.projectDecoder.getReferenceDeclarations();
       const compiler = this.compilation.compiler || this.contract.compiler;
       this.noBytecodeAllocations = Object.values(
@@ -872,14 +836,14 @@ export class ContractDecoder {
 
   private async getCode(
     address: string,
-    block: DecoderTypes.RegularizedBlockSpecifier
+    block: RegularizedBlockSpecifier
   ): Promise<Uint8Array> {
     return await this.projectDecoder.getCode(address, block);
   }
 
   private async regularizeBlock(
-    block: DecoderTypes.BlockSpecifier
-  ): Promise<DecoderTypes.RegularizedBlockSpecifier> {
+    block: BlockSpecifier
+  ): Promise<RegularizedBlockSpecifier> {
     return await this.projectDecoder.regularizeBlock(block);
   }
 
@@ -1007,7 +971,7 @@ export class ContractInstanceDecoder {
   private compilation: Compilations.Compilation;
   private contract: Compilations.Contract;
   private contractNode: Ast.AstNode;
-  private contractNetwork: string;
+  private contractNetwork: number;
   private contractAddress: string;
   private contractCode: string;
   private contextHash: string;
@@ -1029,6 +993,7 @@ export class ContractInstanceDecoder {
 
   private contractDecoder: ContractDecoder;
   private projectDecoder: ProjectDecoder;
+  private encoder: Encoder.ProjectEncoder;
 
   /**
    * @protected
@@ -1116,6 +1081,24 @@ export class ContractInstanceDecoder {
       this.contexts = { ...this.contexts, ...this.additionalContexts };
     }
 
+    //set up encoder for wrapping elementary values.
+    //we pass it a provider, so it can handle ENS names.
+    let {
+      provider: ensProvider,
+      registryAddress
+    } = this.projectDecoder.getEnsSettings();
+    if (ensProvider === undefined) {
+      //note: NOT if it's null, if it's null we leave it null
+      ensProvider = this.providerAdapter.provider;
+    }
+    this.encoder = await Encoder.forProjectInternal({
+      provider: ensProvider,
+      registryAddress,
+      userDefinedTypes: this.userDefinedTypes,
+      allocations: this.allocations,
+      networkId: this.contractNetwork
+    });
+
     //finally: set up internal functions table (only if source order is reliable;
     //otherwise leave as undefined)
     //unlike the debugger, we don't *demand* an answer, so we won't set up
@@ -1178,7 +1161,7 @@ export class ContractInstanceDecoder {
 
   private async decodeVariable(
     variable: Storage.Allocate.StateVariableAllocation,
-    block: DecoderTypes.RegularizedBlockSpecifier
+    block: RegularizedBlockSpecifier
   ): Promise<DecoderTypes.StateVariable> {
     const info: Codec.Evm.EvmInfo = {
       state: {
@@ -1245,7 +1228,7 @@ export class ContractInstanceDecoder {
    *   See [[BlockSpecifier]] for legal values.
    */
   public async state(
-    block: DecoderTypes.BlockSpecifier = "latest"
+    block: BlockSpecifier = "latest"
   ): Promise<DecoderTypes.ContractState> {
     let blockNumber = await this.regularizeBlock(block);
     return {
@@ -1285,7 +1268,7 @@ export class ContractInstanceDecoder {
    *   See [[BlockSpecifier]] for legal values.
    */
   public async variables(
-    block: DecoderTypes.BlockSpecifier = "latest"
+    block: BlockSpecifier = "latest"
   ): Promise<DecoderTypes.StateVariable[]> {
     this.checkAllocationSuccess();
 
@@ -1326,7 +1309,7 @@ export class ContractInstanceDecoder {
    */
   public async variable(
     nameOrId: string | number,
-    block: DecoderTypes.BlockSpecifier = "latest"
+    block: BlockSpecifier = "latest"
   ): Promise<Format.Values.Result | undefined> {
     this.checkAllocationSuccess();
 
@@ -1378,7 +1361,7 @@ export class ContractInstanceDecoder {
   private async getStorage(
     address: string,
     slot: BN,
-    block: DecoderTypes.RegularizedBlockSpecifier
+    block: RegularizedBlockSpecifier
   ): Promise<Uint8Array> {
     //if pending, bypass the cache
     if (block === "pending") {
@@ -1410,14 +1393,14 @@ export class ContractInstanceDecoder {
 
   private async getCode(
     address: string,
-    block: DecoderTypes.RegularizedBlockSpecifier
+    block: RegularizedBlockSpecifier
   ): Promise<Uint8Array> {
     return await this.projectDecoder.getCode(address, block);
   }
 
   private async regularizeBlock(
-    block: DecoderTypes.BlockSpecifier
-  ): Promise<DecoderTypes.RegularizedBlockSpecifier> {
+    block: BlockSpecifier
+  ): Promise<RegularizedBlockSpecifier> {
     return await this.projectDecoder.regularizeBlock(block);
   }
 
@@ -1437,12 +1420,6 @@ export class ContractInstanceDecoder {
    * only possible in full mode; if the decoder wasn't able to start up in full
    * mode, this method will throw an exception.
    *
-   * **Warning**: At the moment, this function does very little to check its
-   * input.  Bad input may have unpredictable results.  This will be remedied
-   * in the future (by having it throw exceptions on bad input), but right now
-   * essentially no checking is implemented.  Also, there may be slight changes
-   * to the format of indices in the future.
-   *
    * (A bad variable name will cause an exception though; that input is checked.)
    * @param variable The variable that the mapping lives under; this works like
    *   the nameOrId argument to [[variable|variable()]].  If the mapping is a
@@ -1453,16 +1430,9 @@ export class ContractInstanceDecoder {
    *   variable argument; see the example.  Array indices and mapping
    *   keys are specified by value; struct members are specified by name.
    *
-   *   Numeric values can be given as number, BN, or
-   *   numeric string.  Bytestring values are given as hex strings.  Boolean
-   *   values are given as booleans, or as the strings "true" or "false".
-   *   Address values are given as hex strings; they are currently not required
-   *   to be in checksum case, but this will likely change in the future, so
-   *   don't rely on that.  Contract values work like address values.
-   *   Enum values can be given either as a numeric value or by name;
-   *   in the latter case you can use either a qualified name or just the
-   *   name of the option (i.e., you can just write `"Option"` rather than
-   *   `"Enum.Option"` or `"Contract.Enum.Option"`, but those will work too).
+   *   Values (for array indices and mapping keys) may be given in any format
+   *   understood by Truffle Encoder; see the documentation for
+   *   [[Encoder.ProjectEncoder.wrap|ProjectEncoder.wrap]] for details.
    *
    *   Note that if the path to a given mapping key
    *   includes mapping keys above it, any ancestors will also be watched
@@ -1482,7 +1452,7 @@ export class ContractInstanceDecoder {
    */
   public async watchMappingKey(
     variable: number | string,
-    ...indices: any[]
+    ...indices: unknown[]
   ): Promise<void> {
     this.checkAllocationSuccess();
     let { slot } = await this.constructSlot(variable, ...indices);
@@ -1515,13 +1485,11 @@ export class ContractInstanceDecoder {
    * Note that unwatching a mapping key will also unwatch all its descendants.
    * E.g., if `m` is of type `mapping(uint => mapping(uint => uint))`, then
    * unwatching `m[0]` will also unwatch `m[0][0]`, `m[0][1]`, etc, if these
-   * are currently watched
-   *
-   * This function has the same caveats as watchMappingKey.
+   * are currently watched.
    */
   public async unwatchMappingKey(
     variable: number | string,
-    ...indices: any[]
+    ...indices: unknown[]
   ): Promise<void> {
     this.checkAllocationSuccess();
     let { slot } = await this.constructSlot(variable, ...indices);
@@ -1648,7 +1616,7 @@ export class ContractInstanceDecoder {
   //boolean mapping keys may be given either as booleans, or as string "true" or "false"
   private async constructSlot(
     variable: number | string,
-    ...indices: any[]
+    ...indices: unknown[]
   ): Promise<{ slot?: Storage.Slot; type?: Format.Types.Type }> {
     //base case: we need to locate the variable and its definition
     if (indices.length === 0) {
@@ -1681,16 +1649,24 @@ export class ContractInstanceDecoder {
       return { slot: undefined, type: undefined };
     }
     let rawIndex = indices[indices.length - 1];
-    let index: any;
-    let key: Format.Values.ElementaryValue;
     let slot: Storage.Slot;
     let dataType: Format.Types.Type;
     switch (parentType.typeClass) {
       case "array":
-        if (rawIndex instanceof BN) {
-          index = rawIndex.clone();
-        } else {
-          index = new BN(rawIndex);
+        const wrappedIndex = <Format.Values.UintValue>(
+          await this.encoder.wrapElementaryValue(
+            { typeClass: "uint", bits: 256 },
+            rawIndex
+          )
+        );
+        const index = wrappedIndex.value.asBN;
+        if (parentType.kind === "static" && index.gte(parentType.length)) {
+          throw new ArrayIndexOutOfBoundsError(
+            index,
+            parentType.length,
+            variable,
+            indices
+          );
         }
         dataType = parentType.baseType;
         let size = Storage.Allocate.storageSize(
@@ -1709,15 +1685,7 @@ export class ContractInstanceDecoder {
         break;
       case "mapping":
         let keyType = parentType.keyType;
-        if (
-          keyType.typeClass === "enum" ||
-          keyType.typeClass === "userDefinedValueType"
-        ) {
-          keyType = <Format.Types.EnumType>(
-            Format.Types.fullType(keyType, this.userDefinedTypes)
-          );
-        }
-        key = Utils.wrapElementaryValue(rawIndex, keyType);
+        const key = await this.encoder.wrapElementaryValue(keyType, rawIndex);
         dataType = parentType.valueType;
         slot = {
           path: parentSlot,
@@ -1732,8 +1700,11 @@ export class ContractInstanceDecoder {
           parentType.id
         ].members.find(({ name }) => name === rawIndex); //there should be exactly one
         if (!allocation) {
+          const stringIndex = typeof rawIndex === "string"
+            ? rawIndex
+            : "specified by non-string argument";
           throw new MemberNotFoundError(
-            rawIndex,
+            stringIndex,
             parentType,
             variable,
             indices
