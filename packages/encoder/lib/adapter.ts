@@ -1,6 +1,6 @@
 import debugModule from "debug";
 const debug = debugModule("decoder:adapter");
-import type { BlockSpecifier, RegularizedBlockSpecifier } from "./types";
+import type { BlockSpecifier, RegularizedBlockSpecifier } from "@truffle/codec";
 import type BN from "bn.js";
 import type {
   Provider as LegacyProvider,
@@ -28,12 +28,14 @@ type SendRequestArgs = {
   method: string;
   params: unknown[];
 };
+
 type Eip1193Provider = {
   request: (options: {
     method: string;
     params?: unknown[] | object;
   }) => Promise<any>;
 };
+
 type Block = {
   number: string;
   hash: string;
@@ -80,7 +82,10 @@ const formatBlockSpecifier = (block: BlockSpecifier): string => {
   }
 };
 
-type Provider = LegacyProvider | Eip1193Provider;
+/**
+ * @hidden
+ */
+export type Provider = LegacyProvider | Eip1193Provider;
 
 // EIP-1193 providers use `request()` instead of `send()`
 // NOTE this provider returns `response.result` already unwrapped
@@ -89,6 +94,9 @@ const isEip1193Provider = (
   provider: Provider
 ): provider is Eip1193Provider => "request" in provider;
 
+/**
+ * @hidden
+ */
 export class ProviderAdapter {
   public provider: Provider;
 
@@ -167,11 +175,11 @@ export class ProviderAdapter {
     });
   }
 
-  public async getNetworkId(): Promise<string> {
-    return await this.sendRequest({
+  public async getNetworkId (): Promise<number> {
+    return parseInt(await this.sendRequest({
       method: "net_version",
       params: []
-    });
+    }));
   }
 
   public async getBlockNumber(): Promise<number> {

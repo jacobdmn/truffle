@@ -7,9 +7,8 @@ import * as Codec from "@truffle/codec";
 import * as Abi from "@truffle/abi-utils";
 import * as Types from "./types";
 import Big from "big.js";
-import type { Provider } from "web3/providers";
-import Web3 from "web3";
 import Web3Utils from "web3-utils";
+import { ProviderAdapter, Provider } from "./adapter";
 import * as Utils from "./utils";
 import {
   NoInternalInfoError,
@@ -138,7 +137,7 @@ export class ProjectEncoder {
         //but what is that?  We have to look it up.
         //NOTE: ENS is supposed to do this for us in the constructor,
         //but due to a bug it doesn't.
-        const networkId = await new Web3(this.provider).eth.net.getId();
+        const networkId = await new ProviderAdapter(this.provider).getNetworkId();
         const registryAddress: string | undefined = getEnsAddress(networkId);
         if (registryAddress) {
           this.ens = new ENS({
