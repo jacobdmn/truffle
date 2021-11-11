@@ -155,13 +155,12 @@ const command = {
 
     let accept = true;
 
+    const config = Config.detect(options);
     if (options.interactive) {
-      accept = await Migrate.acceptDryRun();
+      accept = await Migrate.acceptDryRun(config);
     }
 
     if (accept) {
-      const config = Config.detect(options);
-
       config.contracts_build_directory = buildDir;
       config.artifactor = new Artifactor(buildDir);
       config.resolver = new Resolver(config);
@@ -247,8 +246,6 @@ const command = {
     }
 
     async function runMigrations(config) {
-      Migrate.launchReporter(config);
-
       if (options.f) {
         return await Migrate.runFrom(options.f, config);
       } else {
