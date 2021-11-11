@@ -28,7 +28,6 @@
     "web3-utils": "1.5.3"
   },
   "devDependencies": {
-    "@truffle/reporters": "^2.0.8",
     "@truffle/workflow-compile": "^3.2.39",
     "ganache-core": "2.13.0",
     "mocha": "8.1.2",
