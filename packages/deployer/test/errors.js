@@ -6,6 +6,8 @@ const EventEmitter = require("events");
 const Deployer = require("../index");
 const utils = require("./helpers/utils");
 
+const { mockEventsSystem } = require("./helpers");
+
 describe("Error cases", function() {
   let owner;
   let accounts;
@@ -20,10 +22,6 @@ describe("Error cases", function() {
   const provider = ganache.provider({
     vmErrorsOnRPCResponse: false
   });
-
-  const mockMigration = {
-    emitter: new EventEmitter()
-  };
 
   const web3 = new Web3(provider);
 
@@ -53,6 +51,8 @@ describe("Error cases", function() {
     Abstract = utils.getContract("Abstract", provider, networkId, owner);
     Loops = utils.getContract("Loops", provider, networkId, owner);
 
+    mockEventsSystem.clearEmittedEvents();
+
     options = {
       contracts: [
         Example,
@@ -69,7 +69,8 @@ describe("Error cases", function() {
       },
       network: "test",
       network_id: networkId,
-      provider: provider
+      provider: provider,
+      events: mockEventsSystem
     };
     deployer = new Deployer({ options });
   });
@@ -90,9 +91,9 @@ describe("Error cases", function() {
       await deployer.start();
       assert.fail();
     } catch (err) {
-      assert(err.message.includes("Deployment Failed"));
-      assert(err.message.includes("IsLibrary"));
-      assert(err.message.includes("has no address"));
+      assert(mockEventsSystem.emittedEvents["migrate:deployment:error"].length === 1);
+      assert(mockEventsSystem.emittedEvents["migrate:deployment:error"][0].data.type === "noLibAddress");
+      assert(mockEventsSystem.emittedEvents["migrate:deployment:error"][0].data.contract.contractName === "IsLibrary");
     }
   });
 
