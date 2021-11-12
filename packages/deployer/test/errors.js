@@ -69,13 +69,9 @@ describe("Error cases", function() {
       },
       network: "test",
       network_id: networkId,
-      provider: provider,
-      logger: {
-        log: val => {}, // eslint-disable-line no-unused-vars
-        error: val => {} // eslint-disable-line no-unused-vars
-      }
+      provider: provider
     };
-    deployer = new Deployer(options);
+    deployer = new Deployer({ options });
   });
 
   afterEach(() => {
