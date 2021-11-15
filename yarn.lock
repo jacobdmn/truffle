@@ -3708,14 +3708,6 @@
   resolved "https://registry.yarnpkg.com/@truffle/error/-/error-0.0.8.tgz#dc94ca36393403449d4b7461bf9452c241e53ec1"
   integrity sha512-x55rtRuNfRO1azmZ30iR0pf0OJ6flQqbax1hJz+Avk1K5fdmOv5cr22s9qFnwTWnS6Bw0jvJEoR0ITsM7cPKtQ==
 
-"@truffle/reporters@^2.0.7":
-  version "2.0.7"
-  resolved "https://registry.yarnpkg.com/@truffle/reporters/-/reporters-2.0.7.tgz#ed2a74ab0971437a1755ca7aec6a5f32a4b7edf6"
-  integrity sha512-dS+dgbV4MXrS/poorQikMElfjPv7s3FPhG6eEMSOkZeSwQB+4BIWBf1PY47oI7MUqMBvFjEAXtfo//zPappERQ==
-  dependencies:
-    ora "^3.4.0"
-    web3-utils "1.5.3"
-
 "@trufflesuite/chromafi@^2.2.2":
   version "2.2.2"
   resolved "https://registry.yarnpkg.com/@trufflesuite/chromafi/-/chromafi-2.2.2.tgz#d3fc507aa8504faffc50fb892cedcfe98ff57f77"
