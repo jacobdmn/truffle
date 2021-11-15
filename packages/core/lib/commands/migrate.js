@@ -102,7 +102,7 @@ const command = {
         option: "--describe-json",
         description:
           "Adds extra verbosity to the status of an ongoing migration"
-      },
+      }
     ],
     allowedGlobalOptions: ["network", "config"]
   },
@@ -143,21 +143,21 @@ const command = {
       networkWhitelist.includes(parseInt(config.network_id)) ||
       config.production;
     const dryRunAndMigrations = production && !skipDryRun;
-    return {dryRunOnly, dryRunAndMigrations};
+    return { dryRunOnly, dryRunAndMigrations };
   },
 
   prepareConfigForRealMigrations: async function (buildDir, options) {
     const Artifactor = require("@truffle/artifactor");
     const Resolver = require("@truffle/resolver");
     const Migrate = require("@truffle/migrate");
-    const {Environment} = require("@truffle/environment");
+    const { Environment } = require("@truffle/environment");
     const Config = require("@truffle/config");
 
     let accept = true;
 
     const config = Config.detect(options);
     if (options.interactive) {
-      accept = await Migrate.acceptDryRun(config);
+      accept = await Migrate.promptToAcceptDryRun(config);
     }
 
     if (accept) {
@@ -172,9 +172,9 @@ const command = {
       }
 
       config.dryRun = false;
-      return {config, proceed: true};
+      return { config, proceed: true };
     } else {
-      return {proceed: false};
+      return { proceed: false };
     }
   },
 
@@ -183,9 +183,9 @@ const command = {
     const Resolver = require("@truffle/resolver");
     const Migrate = require("@truffle/migrate");
     const WorkflowCompile = require("@truffle/workflow-compile");
-    const {Environment} = require("@truffle/environment");
+    const { Environment } = require("@truffle/environment");
     const Config = require("@truffle/config");
-    const {promisify} = require("util");
+    const { promisify } = require("util");
     const promisifiedCopy = promisify(require("../copy"));
     const tmp = require("tmp");
     tmp.setGracefulCleanup();
@@ -202,7 +202,7 @@ const command = {
     await WorkflowCompile.assignNames(conf, result);
     await Environment.detect(conf);
 
-    const {dryRunOnly, dryRunAndMigrations} = command.determineDryRunSettings(
+    const { dryRunOnly, dryRunAndMigrations } = command.determineDryRunSettings(
       conf,
       options
     );
@@ -216,7 +216,7 @@ const command = {
 
       await setupDryRunEnvironmentThenRunMigrations(conf);
 
-      let {config, proceed} = await command.prepareConfigForRealMigrations(
+      let { config, proceed } = await command.prepareConfigForRealMigrations(
         currentBuild,
         options
       );
