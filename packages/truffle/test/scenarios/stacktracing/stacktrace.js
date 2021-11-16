@@ -66,14 +66,14 @@ describe("Stack tracing", function () {
     Server.stop(done);
   });
 
-  it("will run tests and produce stack traces", async function () {
+  it("runs tests and produces stacktraces", async function () {
     this.timeout(70000);
     try {
       await CommandRunner.run("test --stacktrace", config);
       assert.fail("Test should have failed");
     } catch (_) {
       //tests should fail, so non-zero exit code
-      var output = logger.contents();
+      const output = logger.contents();
 
       assert(output.includes("1 failing"));
       assert(output.includes("Oops!"));

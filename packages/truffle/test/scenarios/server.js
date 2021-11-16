@@ -1,6 +1,6 @@
-var Ganache = require("ganache-core");
-var fs = require("fs-extra");
-var glob = require("glob");
+const Ganache = require("ganache-core");
+const fs = require("fs-extra");
+const glob = require("glob");
 
 var server = null;
 

@@ -71,8 +71,6 @@ describe("Error cases", function() {
       network: "test",
     });
     await Environment.detect(options);
-    // we need to emit this event to initialize the reporter
-    await options.events.emit("migrate:start", { config: options });
     deployer = new Deployer({ options });
   });
 

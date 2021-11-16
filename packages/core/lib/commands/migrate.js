@@ -191,9 +191,6 @@ const command = {
     tmp.setGracefulCleanup();
 
     const conf = Config.detect(options);
-    conf.events.emit("migrate:start", {
-      config: conf
-    });
     if (conf.compileNone || conf["compile-none"]) {
       conf.compiler = "none";
     }
