@@ -28,19 +28,24 @@ describe("truffle develop", function () {
     };
   });
 
-  describe("Globals", () => {
+  describe("Globals", function () {
     let output;
-    before(async() => {
+    before(async function () {
+      this.timeout(10000);
       const input = "Object.keys(global)";
       await CommandRunner.runInDevelopEnvironment([input], config);
       output = logger.contents();
     });
 
     [
-      'clearInterval',      'clearTimeout',       
-      'setInterval',        'setTimeout',
-      'clearImmediate',     'setImmediate',
-      '__core-js_shared__', 'regeneratorRuntime',
+      "clearInterval",
+      "clearTimeout",
+      "setInterval",
+      "setTimeout",
+      "clearImmediate",
+      "setImmediate",
+      "__core-js_shared__",
+      "regeneratorRuntime"
     ].forEach(property => {
       it(`has ${property}`, function () {
         this.timeout(70000);
@@ -50,7 +55,7 @@ describe("truffle develop", function () {
         );
       });
     });
-  })
+  });
 
   it("handles awaits", async function () {
     this.timeout(70000);
