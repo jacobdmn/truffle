@@ -33,6 +33,7 @@ export const getInitialConfig = ({
     build: null,
     resolver: null,
     artifactor: null,
+    quiet: false,
     ethpm: {
       ipfs_host: "ipfs.infura.io",
       ipfs_protocol: "https",
@@ -95,6 +96,7 @@ export const configProps = ({
     ens() {},
     console() {},
     mocha() {},
+    quiet() {},
 
     build_directory: {
       default: () => path.join(configObject.working_directory, "build"),
