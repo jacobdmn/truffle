@@ -78,7 +78,7 @@ describe("Deployer (sync)", function () {
   });
 
   async function setUpWithConfig(options) {
-    deployer = new Deployer({ options });
+    deployer = new Deployer(options);
   }
 
   // in this describe block, `setUpWithConfig` is **not** called in a `beforeEach`
@@ -93,7 +93,7 @@ describe("Deployer (sync)", function () {
           }
         }
       };
-      deployer = new Deployer({ options: customConfig });
+      deployer = new Deployer(customConfig);
       assert.strictEqual(
         deployer.pollingInterval,
         4000,
@@ -110,7 +110,7 @@ describe("Deployer (sync)", function () {
           }
         }
       };
-      deployer = new Deployer({ options: customConfig });
+      deployer = new Deployer(customConfig);
       assert.strictEqual(
         deployer.pollingInterval,
         8000,

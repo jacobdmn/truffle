@@ -1,14 +1,13 @@
 const ganache = require("ganache-core");
 const Web3 = require("web3");
 const assert = require("assert");
-const EventEmitter = require("events");
 
 const Deployer = require("../index");
 const utils = require("./helpers/utils");
 const Config = require("@truffle/config");
 const { Environment } = require("@truffle/environment");
 
-describe("Error cases", function() {
+describe("Error cases", function () {
   let owner;
   let accounts;
   let options;
@@ -18,6 +17,10 @@ describe("Error cases", function() {
   let UsesExample;
   let IsLibrary;
   let UsesLibrary;
+  let ExampleRevert;
+  let Abstract;
+  let Loops;
+  let ExampleAssert;
 
   const provider = ganache.provider({
     vmErrorsOnRPCResponse: false
@@ -25,7 +28,7 @@ describe("Error cases", function() {
 
   const web3 = new Web3(provider);
 
-  beforeEach(async function() {
+  beforeEach(async function () {
     networkId = await web3.eth.net.getId();
     accounts = await web3.eth.getAccounts();
 
@@ -68,10 +71,10 @@ describe("Error cases", function() {
           provider
         }
       },
-      network: "test",
+      network: "test"
     });
     await Environment.detect(options);
-    deployer = new Deployer({ options });
+    deployer = new Deployer(options);
   });
 
   afterEach(() => {
@@ -79,8 +82,8 @@ describe("Error cases", function() {
     deployer.finish();
   });
 
-  it("library not deployed", async function() {
-    const migrate = function() {
+  it("library not deployed", async function () {
+    const migrate = function () {
       deployer.link(IsLibrary, UsesLibrary);
     };
 
@@ -92,11 +95,12 @@ describe("Error cases", function() {
     } catch (err) {
       assert(err.message.includes("Deployment Failed"));
       assert(err.message.includes("IsLibrary"));
-      assert(err.message.includes("has no address"));    }
+      assert(err.message.includes("has no address"));
+    }
   });
 
-  it("unlinked library", async function() {
-    const migrate = function() {
+  it("unlinked library", async function () {
+    const migrate = function () {
       deployer.deploy(UsesLibrary);
     };
 
@@ -112,8 +116,8 @@ describe("Error cases", function() {
     }
   });
 
-  it("contract has no bytecode", async function() {
-    const migrate = function() {
+  it("contract has no bytecode", async function () {
+    const migrate = function () {
       deployer.deploy(Abstract);
     };
 
@@ -130,8 +134,8 @@ describe("Error cases", function() {
     }
   });
 
-  it("OOG (no constructor args)", async function() {
-    const migrate = function() {
+  it("OOG (no constructor args)", async function () {
+    const migrate = function () {
       deployer.deploy(Example, { gas: 10 });
     };
 
@@ -149,8 +153,8 @@ describe("Error cases", function() {
     }
   });
 
-  it("OOG (w/ constructor args)", async function() {
-    const migrate = function() {
+  it("OOG (w/ constructor args)", async function () {
+    const migrate = function () {
       deployer.deploy(UsesExample, utils.zeroAddress, { gas: 10 });
     };
 
@@ -169,10 +173,10 @@ describe("Error cases", function() {
     }
   });
 
-  it("OOG (w/ estimate, hits block limit)", async function() {
+  it("OOG (w/ estimate, hits block limit)", async function () {
     this.timeout(100000);
 
-    const migrate = function() {
+    const migrate = function () {
       deployer.deploy(Loops);
     };
 
@@ -188,10 +192,10 @@ describe("Error cases", function() {
     }
   });
 
-  it("OOG (w/ param, hits block limit)", async function() {
+  it("OOG (w/ param, hits block limit)", async function () {
     this.timeout(20000);
 
-    const migrate = function() {
+    const migrate = function () {
       deployer.deploy(Loops, { gas: 100000 });
     };
 
@@ -208,8 +212,8 @@ describe("Error cases", function() {
     }
   });
 
-  it("revert", async function() {
-    migrate = function() {
+  it("revert", async function () {
+    const migrate = function () {
       deployer.deploy(ExampleRevert);
     };
 
@@ -223,8 +227,8 @@ describe("Error cases", function() {
     }
   });
 
-  it("assert", async function() {
-    migrate = function() {
+  it("assert", async function () {
+    const migrate = function () {
       deployer.deploy(ExampleAssert);
     };
 
@@ -238,11 +242,11 @@ describe("Error cases", function() {
     }
   });
 
-  it("exceeds block limit", async function() {
+  it("exceeds block limit", async function () {
     const block = await web3.eth.getBlock("latest");
     const gas = block.gasLimit + 1000;
 
-    migrate = function() {
+    const migrate = function () {
       deployer.deploy(Example, { gas: gas });
     };
 
@@ -259,7 +263,7 @@ describe("Error cases", function() {
     }
   });
 
-  it("insufficient funds", async function() {
+  it("insufficient funds", async function () {
     const emptyAccount = accounts[7];
     let balance = await web3.eth.getBalance(emptyAccount);
     await web3.eth.sendTransaction({
@@ -272,7 +276,7 @@ describe("Error cases", function() {
     balance = await web3.eth.getBalance(emptyAccount);
     assert(parseInt(balance) === 0);
 
-    migrate = function() {
+    const migrate = function () {
       deployer.deploy(Example, { from: emptyAccount });
     };
 
